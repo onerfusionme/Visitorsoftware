@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Powered Visitor Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html-to-docx@1.8.0/dist/html-to-docx.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.6);
+            -webkit-animation-name: fadeIn;
+            -webkit-animation-duration: 0.4s;
+            animation-name: fadeIn;
+            animation-duration: 0.4s
+        }
+        .modal-content {
+            position: fixed;
+            bottom: 0;
+            background-color: #fefefe;
+            width: 100%;
+            -webkit-animation-name: slideIn;
+            -webkit-animation-duration: 0.4s;
+            animation-name: slideIn;
+            animation-duration: 0.4s;
+            border-top-left-radius: 1rem;
+            border-top-right-radius: 1rem;
+        }
+        @media (min-width: 640px) {
+            .modal-content {
+                margin: 5% auto;
+                width: 90%;
+                max-width: 600px;
+                border-radius: 0.5rem;
+                bottom: auto;
+            }
+        }
+
+        @-webkit-keyframes slideIn { from {bottom: -300px; opacity: 0} to {bottom: 0; opacity: 1} }
+        @keyframes slideIn { from {bottom: -300px; opacity: 0} to {bottom: 0; opacity: 1} }
+        @-webkit-keyframes fadeIn { from {opacity: 0} to {opacity: 1} }
+        @keyframes fadeIn { from {opacity: 0} to {opacity: 1} }
+
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .form-input {
+            @apply mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2.5;
+        }
+        .btn {
+            @apply font-bold py-2 px-4 rounded-md shadow-sm inline-flex items-center justify-center transition-transform transform hover:scale-105;
+        }
+        .btn-primary {
+            @apply bg-indigo-600 hover:bg-indigo-700 text-white;
+        }
+        .btn-secondary {
+            @apply bg-gray-200 hover:bg-gray-300 text-gray-800;
+        }
+        .btn-ai {
+            @apply bg-purple-600 hover:bg-purple-700 text-white;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 4px solid #5b21b6;
+            width: 30px;
+            height: 30px;
+            -webkit-animation: spin 2s linear infinite;
+            animation: spin 2s linear infinite;
+            margin: 20px auto;
+        }
+        @-webkit-keyframes spin { 0% { -webkit-transform: rotate(0deg); } 100% { -webkit-transform: rotate(360deg); } }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container mx-auto p-4">
+        <header class="bg-white shadow-lg rounded-xl p-6 mb-6 flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">AI Visitor Management System</h1>
+                <p class="text-gray-600 mt-1">Intelligent solutions for managing visitor entries.</p>
+            </div>
+            <i class="fas fa-brain fa-2x text-purple-500"></i>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Visitor Registration Form -->
+            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-semibold mb-4 border-b pb-3 flex items-center"><i class="fas fa-user-plus mr-3 text-indigo-500"></i>New Visitor</h2>
+                <form id="visitorForm" class="space-y-4">
+                    <!-- Form content remains the same -->
+                     <fieldset class="border-t pt-4">
+                        <legend class="text-lg font-semibold text-gray-800">Personal Details</legend>
+                        <div class="mt-2 space-y-4">
+                            <div>
+                                <label for="fullName" class="block text-sm font-medium text-gray-700">Full Name</label>
+                                <input type="text" id="fullName" name="fullName" required class="form-input">
+                            </div>
+                            <div>
+                                <label for="mobileNumber" class="block text-sm font-medium text-gray-700">Mobile Number</label>
+                                <input type="tel" id="mobileNumber" name="mobileNumber" required class="form-input">
+                            </div>
+                            <div>
+                                <label for="gender" class="block text-sm font-medium text-gray-700">Gender</label>
+                                <select id="gender" name="gender" required class="form-input">
+                                    <option>Male</option>
+                                    <option>Female</option>
+                                    <option>Other</option>
+                                </select>
+                            </div>
+                        </div>
+                    </fieldset>
+                    <fieldset class="border-t pt-4">
+                        <legend class="text-lg font-semibold text-gray-800">Address Details</legend>
+                        <div class="mt-2 space-y-4">
+                             <div>
+                                <label for="country" class="block text-sm font-medium text-gray-700">Country</label>
+                                <input type="text" id="country" name="country" value="India" readonly class="form-input bg-gray-100">
+                            </div>
+                            <div>
+                                <label for="state" class="block text-sm font-medium text-gray-700">State</label>
+                                <select id="state" name="state" required class="form-input"></select>
+                            </div>
+                            <div>
+                                <label for="district" class="block text-sm font-medium text-gray-700">District</label>
+                                <select id="district" name="district" required class="form-input"></select>
+                            </div>
+                             <div>
+                                <label for="taluka" class="block text-sm font-medium text-gray-700">Taluka (Tehsil)</label>
+                                <input type="text" id="taluka" name="taluka" required class="form-input">
+                            </div>
+                            <div>
+                                <label for="village" class="block text-sm font-medium text-gray-700">Village/City</label>
+                                <input type="text" id="village" name="village" required class="form-input">
+                            </div>
+                        </div>
+                    </fieldset>
+                    <fieldset class="border-t pt-4">
+                        <legend class="text-lg font-semibold text-gray-800">Visit Details</legend>
+                         <div class="mt-2 space-y-4">
+                            <div>
+                                <label for="purpose" class="block text-sm font-medium text-gray-700">Purpose of Visit</label>
+                                <select id="purpose" name="purpose" required class="form-input">
+                                    <option>Official</option>
+                                    <option>Medical</option>
+                                    <option>Personal</option>
+                                    <option>Enquiry</option>
+                                    <option>Job Application</option>
+                                    <option>Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="personToMeet" class="block text-sm font-medium text-gray-700">Person/Dept to Meet</label>
+                                <input type="text" id="personToMeet" name="personToMeet" required class="form-input">
+                            </div>
+                         </div>
+                    </fieldset>
+                    <fieldset class="border-t pt-4">
+                        <legend class="text-lg font-semibold text-gray-800">Capture Photo</legend>
+                        <div class="mt-2 text-center">
+                             <button type="button" id="start-camera" class="btn btn-secondary w-full">
+                                <i class="fas fa-camera mr-2"></i>Start Camera
+                            </button>
+                            <video id="video" width="320" height="240" autoplay class="hidden mt-2 rounded-md mx-auto"></video>
+                            <button type="button" id="click-photo" class="hidden btn btn-primary w-full mt-2">Click Photo</button>
+                            <canvas id="canvas" width="320" height="240" class="hidden"></canvas>
+                            <img id="photo-preview" src="" class="hidden mt-2 rounded-lg max-w-full h-auto mx-auto shadow-md"/>
+                        </div>
+                    </fieldset>
+                    <button type="submit" class="w-full btn btn-primary text-lg">
+                        <i class="fas fa-sign-in-alt mr-2"></i>Check-In Visitor
+                    </button>
+                </form>
+            </div>
+
+            <!-- Visitor Log -->
+            <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-semibold mb-4 border-b pb-3 flex items-center"><i class="fas fa-clipboard-list mr-3 text-indigo-500"></i>Visitor Log</h2>
+                
+                <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                        <!-- Filter content remains the same -->
+                        <div>
+                            <label for="logFilter" class="text-sm font-medium">Search Visitor:</label>
+                            <input type="text" id="logFilter" placeholder="Name, village, etc." class="form-input">
+                        </div>
+                        <div>
+                            <label for="startDate" class="text-sm font-medium">Start Date:</label>
+                            <input type="date" id="startDate" class="form-input">
+                        </div>
+                        <div>
+                            <label for="endDate" class="text-sm font-medium">End Date:</label>
+                            <input type="date" id="endDate" class="form-input">
+                        </div>
+                        <button id="filterBtn" class="btn btn-primary w-full"><i class="fas fa-filter mr-2"></i>Apply Filter</button>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center justify-end mb-4 gap-2">
+                    <button id="generateInsightsBtn" class="btn btn-ai text-sm">✨ Generate Daily Insights</button>
+                    <button id="exportWord" class="btn btn-secondary text-sm"><i class="fas fa-file-word mr-2 text-blue-600"></i>Word</button>
+                    <button id="exportExcel" class="btn btn-secondary text-sm"><i class="fas fa-file-excel mr-2 text-green-600"></i>Excel</button>
+                    <button id="exportPdf" class="btn btn-secondary text-sm"><i class="fas fa-file-pdf mr-2 text-red-600"></i>PDF</button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table id="visitorLogTable" class="min-w-full divide-y divide-gray-200">
+                        <!-- Table structure remains the same -->
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Visitor</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Contact</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Check-In</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Status</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="visitorLogBody" class="bg-white divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for Visitor Details -->
+    <div id="detailsModal" class="modal">
+        <div class="modal-content shadow-xl p-0">
+            <div class="flex justify-between items-center p-4 border-b">
+                <h2 class="text-2xl font-semibold">Visitor Details</h2>
+                <span class="close-button" id="closeModal">&times;</span>
+            </div>
+            <div id="modalBody" class="p-6 max-h-[70vh] overflow-y-auto"></div>
+            <div id="aiSummarySection" class="p-6 border-t"></div>
+        </div>
+    </div>
+    
+    <!-- Modal for AI Daily Insights -->
+    <div id="insightsModal" class="modal">
+        <div class="modal-content shadow-xl p-0">
+            <div class="flex justify-between items-center p-4 border-b">
+                <h2 class="text-2xl font-semibold">✨ Daily Visitor Insights</h2>
+                <span class="close-button" id="closeInsightsModal">&times;</span>
+            </div>
+            <div id="insightsBody" class="p-6 max-h-[70vh] overflow-y-auto"></div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, getDoc, query, where, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+
+        // --- App Configuration ---
+        const firebaseConfig = __firebase_config ? JSON.parse(__firebase_config) : { /* YOUR FALLBACK CONFIG */ };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // --- Initialize Firebase ---
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+        let userId;
+        let currentVisitors = [];
+
+        // --- DOM Elements ---
+        const elements = {
+            visitorForm: document.getElementById('visitorForm'),
+            visitorLogBody: document.getElementById('visitorLogBody'),
+            logFilter: document.getElementById('logFilter'),
+            startDate: document.getElementById('startDate'),
+            endDate: document.getElementById('endDate'),
+            filterBtn: document.getElementById('filterBtn'),
+            detailsModal: document.getElementById('detailsModal'),
+            closeModal: document.getElementById('closeModal'),
+            modalBody: document.getElementById('modalBody'),
+            aiSummarySection: document.getElementById('aiSummarySection'),
+            insightsModal: document.getElementById('insightsModal'),
+            closeInsightsModal: document.getElementById('closeInsightsModal'),
+            insightsBody: document.getElementById('insightsBody'),
+            generateInsightsBtn: document.getElementById('generateInsightsBtn'),
+            exportExcelBtn: document.getElementById('exportExcel'),
+            exportPdfBtn: document.getElementById('exportPdf'),
+            exportWordBtn: document.getElementById('exportWord'),
+            startCameraButton: document.getElementById('start-camera'),
+            video: document.getElementById('video'),
+            clickPhotoButton: document.getElementById('click-photo'),
+            canvas: document.getElementById('canvas'),
+            photoPreview: document.getElementById('photo-preview'),
+            stateSelect: document.getElementById('state'),
+            districtSelect: document.getElementById('district'),
+        };
+        let photoDataUrl = null;
+        
+        const geoData = {
+            "Maharashtra": ["Ahmednagar", "Akola", "Amravati", "Aurangabad", "Beed", "Bhandara", "Buldhana", "Chandrapur", "Dhule", "Gadchiroli", "Gondia", "Hingoli", "Jalgaon", "Jalna", "Kolhapur", "Latur", "Mumbai City", "Mumbai Suburban", "Nagpur", "Nanded", "Nandurbar", "Nashik", "Osmanabad", "Palghar", "Parbhani", "Pune", "Raigad", "Ratnagiri", "Sangli", "Satara", "Sindhudurg", "Solapur", "Thane", "Wardha", "Washim", "Yavatmal"],
+            "Karnataka": ["Bagalkot", "Ballari (Bellary)", "Belagavi (Belgaum)", "Bengaluru (Bangalore) Rural", "Bengaluru (Bangalore) Urban", "Bidar", "Chamarajanagar", "Chikballapur", "Chikkamagaluru (Chikmagalur)", "Chitradurga", "Dakshina Kannada", "Davanagere", "Dharwad", "Gadag", "Hassan", "Haveri", "Kalaburagi (Gulbarga)", "Kodagu", "Kolar", "Koppal", "Mandya", "Mysuru (Mysore)", "Raichur", "Ramanagara", "Shivamogga (Shimoga)", "Tumakuru (Tumkur)", "Udupi", "Uttara Kannada (Karwar)", "Vijayapura (Bijapur)", "Yadgir"],
+            "Gujarat": ["Ahmedabad", "Amreli", "Anand", "Aravalli", "Banaskantha", "Bharuch", "Bhavnagar", "Botad", "Chhota Udepur", "Dahod", "Dang", "Devbhoomi Dwarka", "Gandhinagar", "Gir Somnath", "Jamnagar", "Junagadh", "Kachchh", "Kheda", "Mahisagar", "Mehsana", "Morbi", "Narmada", "Navsari", "Panchmahal", "Patan", "Porbandar", "Rajkot", "Sabarkantha", "Surat", "Surendranagar", "Tapi", "Vadodara", "Valsad"],
+        };
+
+        // --- Gemini API Function ---
+        async function callGeminiAPI(prompt) {
+            const apiKey = ""; // Leave empty, handled by environment
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+            const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) {
+                    throw new Error(`API call failed with status: ${response.status}`);
+                }
+                const result = await response.json();
+                if (result.candidates && result.candidates.length > 0) {
+                    return result.candidates[0].content.parts[0].text;
+                }
+                return "No response from AI.";
+            } catch (error) {
+                console.error("Gemini API Error:", error);
+                return "Error contacting AI service. Please check console for details.";
+            }
+        }
+
+        // --- AI Feature Functions ---
+        async function generateVisitSummary(visitorData) {
+            elements.aiSummarySection.innerHTML = '<div class="loader"></div>';
+            const prompt = `
+                Generate a brief, professional summary and suggest 2-3 actionable follow-up steps for a visitor interaction.
+                The current time is ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}.
+                Visitor Details:
+                - Name: ${visitorData.fullName}
+                - Purpose of Visit: ${visitorData.purpose}
+                - Person/Department Met: ${visitorData.personToMeet}
+                - Location: Malkapur, Maharashtra, India
+
+                Format the output in Markdown with headings for 'Visit Summary' and 'Suggested Follow-up'.
+            `;
+            const summary = await callGeminiAPI(prompt);
+            elements.aiSummarySection.innerHTML = `<h3 class="text-lg font-semibold mb-2 text-purple-700">✨ AI-Powered Summary</h3><div class="prose prose-sm max-w-none">${summary.replace(/\n/g, '<br>')}</div>`;
+        }
+        
+        async function generateDailyInsights() {
+            const visitors = await getFilteredDataForExport();
+            if (visitors.length === 0) {
+                elements.insightsBody.innerHTML = `<p>No visitor data for the selected period to generate insights.</p>`;
+                elements.insightsModal.style.display = 'block';
+                return;
+            }
+            elements.insightsBody.innerHTML = '<div class="loader"></div>';
+            elements.insightsModal.style.display = 'block';
+
+            const summaryData = visitors.map(v => `Visitor from ${v.district} for ${v.purpose} at ${v.checkInTime.toDate().toLocaleTimeString()}`).join('; ');
+            const prompt = `
+                Analyze the following visitor data for a service center in Malkapur, Maharashtra, India, for the period of ${elements.startDate.value} to ${elements.endDate.value}.
+                Data: ${summaryData}
+
+                Provide a concise report in Markdown format. The report should include:
+                1.  A high-level overview of visitor traffic.
+                2.  Key trends (e.g., most common visit purpose, busiest districts).
+                3.  Peak visitor hours analysis.
+                4.  One or two actionable recommendations for improving visitor management based on the data.
+            `;
+            const insights = await callGeminiAPI(prompt);
+            elements.insightsBody.innerHTML = `<div class="prose prose-sm max-w-none">${insights.replace(/\n/g, '<br>')}</div>`;
+        }
+
+        // --- Core Functions (mostly unchanged) ---
+        function initializeGeoDropdowns() {
+            const states = Object.keys(geoData).sort();
+            elements.stateSelect.innerHTML = '<option value="">Select State</option>';
+            states.forEach(state => {
+                const option = new Option(state, state);
+                elements.stateSelect.add(option);
+            });
+            elements.stateSelect.addEventListener('change', () => {
+                const selectedState = elements.stateSelect.value;
+                const districts = geoData[selectedState] || [];
+                elements.districtSelect.innerHTML = '<option value="">Select District</option>';
+                districts.sort().forEach(district => {
+                    const option = new Option(district, district);
+                    elements.districtSelect.add(option);
+                });
+            });
+        }
+        async function addVisitor(visitorData) {
+            if (!userId) { console.error("User not authenticated"); return; }
+            try {
+                let photoUrl = '';
+                if (photoDataUrl) {
+                    const storageRef = ref(storage, `visitor_photos/${appId}/${userId}/${Date.now()}.jpg`);
+                    await uploadString(storageRef, photoDataUrl, 'data_url');
+                    photoUrl = await getDownloadURL(storageRef);
+                }
+                await addDoc(collection(db, `artifacts/${appId}/users/${userId}/visitors`), {
+                    ...visitorData, photoUrl, checkInTime: serverTimestamp(), checkOutTime: null, status: 'Checked-In'
+                });
+                elements.visitorForm.reset();
+                elements.photoPreview.classList.add('hidden');
+                photoDataUrl = null;
+                initializeGeoDropdowns();
+            } catch (error) { console.error("Error adding visitor: ", error); }
+        }
+        function listenForVisitors() {
+            if (!userId) return;
+            const visitorsCol = collection(db, `artifacts/${appId}/users/${userId}/visitors`);
+            onSnapshot(visitorsCol, (snapshot) => {
+                currentVisitors = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+                                         .sort((a, b) => (b.checkInTime?.toDate() || 0) - (a.checkInTime?.toDate() || 0));
+                applyFilters();
+            });
+        }
+        function applyFilters() {
+            let filtered = [...currentVisitors];
+            const filterText = elements.logFilter.value.toLowerCase();
+            const startDate = elements.startDate.value ? new Date(elements.startDate.value).setHours(0, 0, 0, 0) : null;
+            const endDate = elements.endDate.value ? new Date(elements.endDate.value).setHours(23, 59, 59, 999) : null;
+            if (filterText) {
+                filtered = filtered.filter(v => Object.values(v).some(val => String(val).toLowerCase().includes(filterText)));
+            }
+            if (startDate) {
+                filtered = filtered.filter(v => v.checkInTime && v.checkInTime.toDate() >= startDate);
+            }
+            if (endDate) {
+                filtered = filtered.filter(v => v.checkInTime && v.checkInTime.toDate() <= endDate);
+            }
+            renderVisitorLog(filtered);
+        }
+        function renderVisitorLog(visitors) {
+            elements.visitorLogBody.innerHTML = '';
+            if (visitors.length === 0) {
+                elements.visitorLogBody.innerHTML = `<tr><td colspan="5" class="text-center py-10 text-gray-500">No visitors match the current criteria.</td></tr>`;
+                return;
+            }
+            visitors.forEach(visitor => {
+                const checkInTime = visitor.checkInTime ? visitor.checkInTime.toDate().toLocaleString() : 'N/A';
+                const statusClass = visitor.status === 'Checked-In' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center"><div class="flex-shrink-0 h-10 w-10"><img class="h-10 w-10 rounded-full object-cover" src="${visitor.photoUrl || 'https://placehold.co/40x40/E2E8F0/4A5568?text=V'}" alt=""></div><div class="ml-4"><div class="text-sm font-medium text-gray-900">${visitor.fullName}</div><div class="text-sm text-gray-500">${visitor.village}</div></div></div></td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${visitor.mobileNumber}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${checkInTime}</td>
+                    <td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${visitor.status}</span></td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        ${visitor.status === 'Checked-In' ? `<button onclick="window.app.checkoutVisitor('${visitor.id}')" class="text-indigo-600 hover:text-indigo-900">Check-Out</button>` : `<span class="text-gray-400">Checked Out</span>`}
+                        <button onclick="window.app.viewDetails('${visitor.id}')" class="text-blue-600 hover:text-blue-900 ml-4">Details</button>
+                    </td>
+                `;
+                elements.visitorLogBody.appendChild(row);
+            });
+        }
+        function displayModal(data) {
+            const checkIn = data.checkInTime ? data.checkInTime.toDate().toLocaleString() : 'N/A';
+            const checkOut = data.checkOutTime ? data.checkOutTime.toDate().toLocaleString() : 'Not yet';
+            let duration = 'N/A';
+            if (data.checkInTime && data.checkOutTime) {
+                const diffMs = data.checkOutTime.toDate() - data.checkInTime.toDate();
+                duration = `${Math.round(diffMs / 60000)} minutes`;
+            }
+            elements.modalBody.innerHTML = `
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div class="space-y-3"><img src="${data.photoUrl || 'https://placehold.co/200x200/E2E8F0/4A5568?text=No+Photo'}" class="rounded-lg w-full object-cover shadow-md"/></div>
+                    <div class="space-y-3 text-sm">
+                        <p><strong>Name:</strong> <span class="text-gray-700">${data.fullName}</span></p>
+                        <p><strong>Mobile:</strong> <span class="text-gray-700">${data.mobileNumber}</span></p>
+                        <p><strong>Address:</strong> <span class="text-gray-700">${data.village}, ${data.taluka}, ${data.district}</span></p>
+                        <p><strong>Purpose:</strong> <span class="text-gray-700">${data.purpose}</span></p>
+                        <p><strong>To Meet:</strong> <span class="text-gray-700">${data.personToMeet}</span></p>
+                        <hr>
+                        <p><strong>Check-In:</strong> <span class="text-gray-700">${checkIn}</span></p>
+                        <p><strong>Check-Out:</strong> <span class="text-gray-700">${checkOut}</span></p>
+                        <p><strong>Duration:</strong> <span class="text-gray-700">${duration}</span></p>
+                    </div>
+                </div>
+            `;
+            elements.aiSummarySection.innerHTML = `<button onclick="window.app.handleGenerateSummaryClick('${data.id}')" class="btn btn-ai w-full">✨ Generate Visit Summary & Follow-up</button>`;
+            elements.detailsModal.style.display = 'block';
+        }
+
+        // --- Event Handlers & Global Functions ---
+        window.app = {
+            checkoutVisitor: async (id) => {
+                if (!userId) return;
+                const visitorDocRef = doc(db, `artifacts/${appId}/users/${userId}/visitors`, id);
+                await updateDoc(visitorDocRef, { checkOutTime: serverTimestamp(), status: 'Checked-Out' });
+            },
+            viewDetails: (id) => {
+                const visitor = currentVisitors.find(v => v.id === id);
+                if (visitor) {
+                    displayModal(visitor);
+                } else {
+                    console.error("Visitor not found:", id);
+                }
+            },
+            handleGenerateSummaryClick: (id) => {
+                const visitorData = currentVisitors.find(v => v.id === id);
+                if (visitorData) {
+                    generateVisitSummary(visitorData);
+                } else {
+                    console.error('Visitor not found for summary generation:', id);
+                    elements.aiSummarySection.innerHTML = `<p class="text-red-500">Error: Could not find visitor data to generate summary.</p>`;
+                }
+            }
+        };
+
+        // --- Event Listeners Setup ---
+        elements.visitorForm.addEventListener('submit', (e) => { e.preventDefault(); addVisitor(Object.fromEntries(new FormData(elements.visitorForm).entries())); });
+        elements.filterBtn.addEventListener('click', applyFilters);
+        elements.logFilter.addEventListener('keyup', applyFilters);
+        elements.generateInsightsBtn.addEventListener('click', generateDailyInsights);
+        elements.closeModal.onclick = () => elements.detailsModal.style.display = 'none';
+        elements.closeInsightsModal.onclick = () => elements.insightsModal.style.display = 'none';
+        window.onclick = (event) => {
+            if (event.target == elements.detailsModal) elements.detailsModal.style.display = 'none';
+            if (event.target == elements.insightsModal) elements.insightsModal.style.display = 'none';
+        };
+        elements.startCameraButton.addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                elements.video.srcObject = stream;
+                elements.video.classList.remove('hidden');
+                elements.clickPhotoButton.classList.remove('hidden');
+                elements.startCameraButton.classList.add('hidden');
+            } catch (err) { console.error("Camera Error: ", err); }
+        });
+        elements.clickPhotoButton.addEventListener('click', () => {
+            elements.canvas.getContext('2d').drawImage(elements.video, 0, 0, elements.canvas.width, elements.canvas.height);
+            photoDataUrl = elements.canvas.toDataURL('image/jpeg');
+            elements.photoPreview.src = photoDataUrl;
+            elements.photoPreview.classList.remove('hidden');
+            elements.video.srcObject.getTracks().forEach(track => track.stop());
+            elements.video.classList.add('hidden');
+            elements.clickPhotoButton.classList.add('hidden');
+            elements.startCameraButton.classList.remove('hidden');
+        });
+        
+        async function getFilteredDataForExport() {
+            let filtered = [...currentVisitors];
+            const filterText = elements.logFilter.value.toLowerCase();
+            const startDate = elements.startDate.value ? new Date(elements.startDate.value).setHours(0, 0, 0, 0) : null;
+            const endDate = elements.endDate.value ? new Date(elements.endDate.value).setHours(23, 59, 59, 999) : null;
+            if (filterText) filtered = filtered.filter(v => Object.values(v).some(val => String(val).toLowerCase().includes(filterText)));
+            if (startDate) filtered = filtered.filter(v => v.checkInTime && v.checkInTime.toDate() >= startDate);
+            if (endDate) filtered = filtered.filter(v => v.checkInTime && v.checkInTime.toDate() <= endDate);
+            return filtered;
+        }
+        elements.exportExcelBtn.addEventListener('click', async () => {
+            const visitors = await getFilteredDataForExport();
+            const dataToExport = visitors.map(v => ({
+                'Full Name': v.fullName, 'Mobile': v.mobileNumber, 'State': v.state, 'District': v.district, 'Village': v.village,
+                'Purpose': v.purpose, 'To Meet': v.personToMeet,
+                'Check-In': v.checkInTime ? v.checkInTime.toDate().toLocaleString() : 'N/A',
+                'Check-Out': v.checkOutTime ? v.checkOutTime.toDate().toLocaleString() : 'N/A',
+                'Status': v.status,
+            }));
+            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Visitors");
+            XLSX.writeFile(workbook, "VisitorLog.xlsx");
+        });
+        elements.exportPdfBtn.addEventListener('click', async () => {
+             const table = document.getElementById('visitorLogTable').cloneNode(true);
+             const opt = { margin: 0.5, filename: 'VisitorLog.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' } };
+             html2pdf().from(table).set(opt).save();
+        });
+        elements.exportWordBtn.addEventListener('click', async () => {
+            const visitors = await getFilteredDataForExport();
+            let htmlContent = `<h1>Visitor Log</h1><table border="1" style="width:100%; border-collapse: collapse;"><thead><tr><th>Name</th><th>Mobile</th><th>Address</th><th>Purpose</th><th>Check-In</th><th>Check-Out</th></tr></thead><tbody>`;
+            visitors.forEach(v => { htmlContent += `<tr><td>${v.fullName}</td><td>${v.mobileNumber}</td><td>${v.village}, ${v.district}</td><td>${v.purpose}</td><td>${v.checkInTime ? v.checkInTime.toDate().toLocaleString() : ''}</td><td>${v.checkOutTime ? v.checkOutTime.toDate().toLocaleString() : ''}</td></tr>`; });
+            htmlContent += `</tbody></table>`;
+            const blob = await htmlToDocx.asBlob(htmlContent);
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'VisitorLog.docx';
+            link.click();
+            URL.revokeObjectURL(link.href);
+        });
+
+        // --- Initialization ---
+        onAuthStateChanged(auth, (user) => {
+            if (user) { userId = user.uid; listenForVisitors(); } 
+            else { signInAnonymously(auth).catch(console.error); }
+        });
+        initializeGeoDropdowns();
+        elements.stateSelect.value = "Maharashtra";
+        elements.stateSelect.dispatchEvent(new Event('change'));
+
+    </script>
+</body>
+</html>
