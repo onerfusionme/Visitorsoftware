@@ -115,7 +115,6 @@
             <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg">
                 <h2 class="text-2xl font-semibold mb-4 border-b pb-3 flex items-center"><i class="fas fa-user-plus mr-3 text-indigo-500"></i>New Visitor</h2>
                 <form id="visitorForm" class="space-y-4">
-                    <!-- Form content remains the same -->
                      <fieldset class="border-t pt-4">
                         <legend class="text-lg font-semibold text-gray-800">Personal Details</legend>
                         <div class="mt-2 space-y-4">
@@ -188,7 +187,8 @@
                              <button type="button" id="start-camera" class="btn btn-secondary w-full">
                                 <i class="fas fa-camera mr-2"></i>Start Camera
                             </button>
-                            <video id="video" width="320" height="240" autoplay class="hidden mt-2 rounded-md mx-auto"></video>
+                            <div id="cameraStatus" class="text-sm text-gray-600 mt-2"></div>
+                            <video id="video" width="320" height="240" autoplay playsinline class="hidden mt-2 rounded-md mx-auto"></video>
                             <button type="button" id="click-photo" class="hidden btn btn-primary w-full mt-2">Click Photo</button>
                             <canvas id="canvas" width="320" height="240" class="hidden"></canvas>
                             <img id="photo-preview" src="" class="hidden mt-2 rounded-lg max-w-full h-auto mx-auto shadow-md"/>
@@ -206,7 +206,6 @@
                 
                 <div class="bg-gray-50 p-4 rounded-lg mb-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                        <!-- Filter content remains the same -->
                         <div>
                             <label for="logFilter" class="text-sm font-medium">Search Visitor:</label>
                             <input type="text" id="logFilter" placeholder="Name, village, etc." class="form-input">
@@ -231,7 +230,6 @@
 
                 <div class="overflow-x-auto">
                     <table id="visitorLogTable" class="min-w-full divide-y divide-gray-200">
-                        <!-- Table structure remains the same -->
                         <thead class="bg-gray-100">
                             <tr>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Visitor</th>
@@ -316,13 +314,19 @@
             photoPreview: document.getElementById('photo-preview'),
             stateSelect: document.getElementById('state'),
             districtSelect: document.getElementById('district'),
+            cameraStatus: document.getElementById('cameraStatus'),
         };
         let photoDataUrl = null;
         
+        // Expanded Geo Data for a more realistic feel
         const geoData = {
-            "Maharashtra": ["Ahmednagar", "Akola", "Amravati", "Aurangabad", "Beed", "Bhandara", "Buldhana", "Chandrapur", "Dhule", "Gadchiroli", "Gondia", "Hingoli", "Jalgaon", "Jalna", "Kolhapur", "Latur", "Mumbai City", "Mumbai Suburban", "Nagpur", "Nanded", "Nandurbar", "Nashik", "Osmanabad", "Palghar", "Parbhani", "Pune", "Raigad", "Ratnagiri", "Sangli", "Satara", "Sindhudurg", "Solapur", "Thane", "Wardha", "Washim", "Yavatmal"],
-            "Karnataka": ["Bagalkot", "Ballari (Bellary)", "Belagavi (Belgaum)", "Bengaluru (Bangalore) Rural", "Bengaluru (Bangalore) Urban", "Bidar", "Chamarajanagar", "Chikballapur", "Chikkamagaluru (Chikmagalur)", "Chitradurga", "Dakshina Kannada", "Davanagere", "Dharwad", "Gadag", "Hassan", "Haveri", "Kalaburagi (Gulbarga)", "Kodagu", "Kolar", "Koppal", "Mandya", "Mysuru (Mysore)", "Raichur", "Ramanagara", "Shivamogga (Shimoga)", "Tumakuru (Tumkur)", "Udupi", "Uttara Kannada (Karwar)", "Vijayapura (Bijapur)", "Yadgir"],
+            "Andhra Pradesh": ["Anantapur", "Chittoor", "East Godavari", "Guntur", "Krishna", "Kurnool", "Prakasam", "Srikakulam", "Visakhapatnam", "Vizianagaram", "West Godavari", "Y.S.R. Kadapa"],
             "Gujarat": ["Ahmedabad", "Amreli", "Anand", "Aravalli", "Banaskantha", "Bharuch", "Bhavnagar", "Botad", "Chhota Udepur", "Dahod", "Dang", "Devbhoomi Dwarka", "Gandhinagar", "Gir Somnath", "Jamnagar", "Junagadh", "Kachchh", "Kheda", "Mahisagar", "Mehsana", "Morbi", "Narmada", "Navsari", "Panchmahal", "Patan", "Porbandar", "Rajkot", "Sabarkantha", "Surat", "Surendranagar", "Tapi", "Vadodara", "Valsad"],
+            "Karnataka": ["Bagalkot", "Ballari (Bellary)", "Belagavi (Belgaum)", "Bengaluru (Bangalore) Rural", "Bengaluru (Bangalore) Urban", "Bidar", "Chamarajanagar", "Chikballapur", "Chikkamagaluru (Chikmagalur)", "Chitradurga", "Dakshina Kannada", "Davanagere", "Dharwad", "Gadag", "Hassan", "Haveri", "Kalaburagi (Gulbarga)", "Kodagu", "Kolar", "Koppal", "Mandya", "Mysuru (Mysore)", "Raichur", "Ramanagara", "Shivamogga (Shimoga)", "Tumakuru (Tumkur)", "Udupi", "Uttara Kannada (Karwar)", "Vijayapura (Bijapur)", "Yadgir"],
+            "Madhya Pradesh": ["Bhopal", "Indore", "Jabalpur", "Gwalior", "Ujjain", "Sagar", "Rewa", "Satna", "Ratlam", "Dewas"],
+            "Maharashtra": ["Ahmednagar", "Akola", "Amravati", "Aurangabad", "Beed", "Bhandara", "Buldhana", "Chandrapur", "Dhule", "Gadchiroli", "Gondia", "Hingoli", "Jalgaon", "Jalna", "Kolhapur", "Latur", "Mumbai City", "Mumbai Suburban", "Nagpur", "Nanded", "Nandurbar", "Nashik", "Osmanabad", "Palghar", "Parbhani", "Pune", "Raigad", "Ratnagiri", "Sangli", "Satara", "Sindhudurg", "Solapur", "Thane", "Wardha", "Washim", "Yavatmal"],
+            "Rajasthan": ["Ajmer", "Alwar", "Banswara", "Baran", "Barmer", "Bharatpur", "Bhilwara", "Bikaner", "Bundi", "Chittorgarh", "Churu", "Dausa", "Dholpur", "Dungarpur", "Hanumangarh", "Jaipur", "Jaisalmer", "Jalore", "Jhalawar", "Jhunjhunu", "Jodhpur", "Karauli", "Kota", "Nagaur", "Pali", "Pratapgarh", "Rajsamand", "Sawai Madhopur", "Sikar", "Sirohi", "Sri Ganganagar", "Tonk", "Udaipur"],
+            "Uttar Pradesh": ["Agra", "Aligarh", "Allahabad", "Ambedkar Nagar", "Amethi", "Amroha", "Auraiya", "Azamgarh", "Baghpat", "Bahraich", "Ballia", "Balrampur", "Banda", "Barabanki", "Bareilly", "Basti", "Bijnor", "Budaun", "Bulandshahr", "Chandauli", "Chitrakoot", "Deoria", "Etah", "Etawah", "Faizabad", "Farrukhabad", "Fatehpur", "Firozabad", "Gautam Buddha Nagar", "Ghaziabad", "Ghazipur", "Gonda", "Gorakhpur", "Hamirpur", "Hapur", "Hardoi", "Hathras", "Jalaun", "Jaunpur", "Jhansi", "Kannauj", "Kanpur Dehat", "Kanpur Nagar", "Kasganj", "Kaushambi", "Kheri", "Kushinagar", "Lalitpur", "Lucknow", "Maharajganj", "Mahoba", "Mainpuri", "Mathura", "Mau", "Meerut", "Mirzapur", "Moradabad", "Muzaffarnagar", "Pilibhit", "Pratapgarh", "Raebareli", "Rampur", "Saharanpur", "Sambhal", "Sant Kabir Nagar", "Sant Ravidas Nagar", "Shahjahanpur", "Shamli", "Shravasti", "Siddharthnagar", "Sitapur", "Sonbhadra", "Sultanpur", "Unnao", "Varanasi"],
         };
 
         // --- Gemini API Function ---
@@ -393,7 +397,7 @@
             elements.insightsBody.innerHTML = `<div class="prose prose-sm max-w-none">${insights.replace(/\n/g, '<br>')}</div>`;
         }
 
-        // --- Core Functions (mostly unchanged) ---
+        // --- Core Functions ---
         function initializeGeoDropdowns() {
             const states = Object.keys(geoData).sort();
             elements.stateSelect.innerHTML = '<option value="">Select State</option>';
@@ -401,6 +405,7 @@
                 const option = new Option(state, state);
                 elements.stateSelect.add(option);
             });
+
             elements.stateSelect.addEventListener('change', () => {
                 const selectedState = elements.stateSelect.value;
                 const districts = geoData[selectedState] || [];
@@ -425,7 +430,9 @@
                 });
                 elements.visitorForm.reset();
                 elements.photoPreview.classList.add('hidden');
+                elements.photoPreview.src = '';
                 photoDataUrl = null;
+                elements.cameraStatus.textContent = '';
                 initializeGeoDropdowns();
             } catch (error) { console.error("Error adding visitor: ", error); }
         }
@@ -543,24 +550,50 @@
             if (event.target == elements.detailsModal) elements.detailsModal.style.display = 'none';
             if (event.target == elements.insightsModal) elements.insightsModal.style.display = 'none';
         };
+        
+        // Corrected Camera Logic with better feedback
         elements.startCameraButton.addEventListener('click', async () => {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                elements.cameraStatus.textContent = "Camera not supported on this browser.";
+                elements.cameraStatus.classList.add('text-red-500');
+                return;
+            }
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
                 elements.video.srcObject = stream;
                 elements.video.classList.remove('hidden');
                 elements.clickPhotoButton.classList.remove('hidden');
                 elements.startCameraButton.classList.add('hidden');
-            } catch (err) { console.error("Camera Error: ", err); }
+                elements.cameraStatus.textContent = "Camera active. Please click photo.";
+                elements.cameraStatus.classList.remove('text-red-500');
+            } catch (err) {
+                console.error("Camera Error: ", err);
+                let message = "Could not access camera.";
+                if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+                    message = "Camera access denied. Please enable camera permissions in your browser settings.";
+                } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+                    message = "No camera found on this device.";
+                }
+                elements.cameraStatus.textContent = message;
+                elements.cameraStatus.classList.add('text-red-500');
+            }
         });
+
         elements.clickPhotoButton.addEventListener('click', () => {
             elements.canvas.getContext('2d').drawImage(elements.video, 0, 0, elements.canvas.width, elements.canvas.height);
             photoDataUrl = elements.canvas.toDataURL('image/jpeg');
             elements.photoPreview.src = photoDataUrl;
             elements.photoPreview.classList.remove('hidden');
-            elements.video.srcObject.getTracks().forEach(track => track.stop());
+            
+            // Stop camera stream
+            if (elements.video.srcObject) {
+                elements.video.srcObject.getTracks().forEach(track => track.stop());
+            }
+            
             elements.video.classList.add('hidden');
             elements.clickPhotoButton.classList.add('hidden');
             elements.startCameraButton.classList.remove('hidden');
+            elements.cameraStatus.textContent = "Photo captured successfully!";
         });
         
         async function getFilteredDataForExport() {
