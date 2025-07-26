@@ -153,11 +153,11 @@
                             </div>
                              <div>
                                 <label for="taluka" class="block text-sm font-medium text-gray-700">Taluka (Tehsil)</label>
-                                <input type="text" id="taluka" name="taluka" required class="form-input">
+                                <input type="text" id="taluka" name="taluka" required class="form-input" placeholder="Enter Taluka manually">
                             </div>
                             <div>
                                 <label for="village" class="block text-sm font-medium text-gray-700">Village/City</label>
-                                <input type="text" id="village" name="village" required class="form-input">
+                                <input type="text" id="village" name="village" required class="form-input" placeholder="Enter Village/City manually">
                             </div>
                         </div>
                     </fieldset>
@@ -177,7 +177,11 @@
                             </div>
                             <div>
                                 <label for="personToMeet" class="block text-sm font-medium text-gray-700">Person/Dept to Meet</label>
-                                <input type="text" id="personToMeet" name="personToMeet" required class="form-input">
+                                <input type="text" id="personToMeet" name="personToMeet" value="Chairman" required class="form-input">
+                            </div>
+                            <div>
+                                <label for="reference" class="block text-sm font-medium text-gray-700">Reference (If any)</label>
+                                <input type="text" id="reference" name="reference" class="form-input">
                             </div>
                          </div>
                     </fieldset>
@@ -254,7 +258,14 @@
                 <span class="close-button" id="closeModal">&times;</span>
             </div>
             <div id="modalBody" class="p-6 max-h-[70vh] overflow-y-auto"></div>
-            <div id="aiSummarySection" class="p-6 border-t"></div>
+            <div class="p-6 border-t bg-gray-50">
+                <div id="meetingNotesSection">
+                    <!-- Meeting notes form will be injected here -->
+                </div>
+                <div id="aiSummarySection" class="mt-4">
+                    <!-- AI Summary will be injected here -->
+                </div>
+            </div>
         </div>
     </div>
     
@@ -277,7 +288,14 @@
         import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
         // --- App Configuration ---
-        const firebaseConfig = __firebase_config ? JSON.parse(__firebase_config) : { /* YOUR FALLBACK CONFIG */ };
+        const firebaseConfig = __firebase_config ? JSON.parse(__firebase_config) : {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
         // --- Initialize Firebase ---
@@ -299,6 +317,7 @@
             detailsModal: document.getElementById('detailsModal'),
             closeModal: document.getElementById('closeModal'),
             modalBody: document.getElementById('modalBody'),
+            meetingNotesSection: document.getElementById('meetingNotesSection'),
             aiSummarySection: document.getElementById('aiSummarySection'),
             insightsModal: document.getElementById('insightsModal'),
             closeInsightsModal: document.getElementById('closeInsightsModal'),
@@ -318,7 +337,6 @@
         };
         let photoDataUrl = null;
         
-        // Expanded Geo Data for a more realistic feel
         const geoData = {
             "Andhra Pradesh": ["Anantapur", "Chittoor", "East Godavari", "Guntur", "Krishna", "Kurnool", "Prakasam", "Srikakulam", "Visakhapatnam", "Vizianagaram", "West Godavari", "Y.S.R. Kadapa"],
             "Gujarat": ["Ahmedabad", "Amreli", "Anand", "Aravalli", "Banaskantha", "Bharuch", "Bhavnagar", "Botad", "Chhota Udepur", "Dahod", "Dang", "Devbhoomi Dwarka", "Gandhinagar", "Gir Somnath", "Jamnagar", "Junagadh", "Kachchh", "Kheda", "Mahisagar", "Mehsana", "Morbi", "Narmada", "Navsari", "Panchmahal", "Patan", "Porbandar", "Rajkot", "Sabarkantha", "Surat", "Surendranagar", "Tapi", "Vadodara", "Valsad"],
@@ -364,6 +382,8 @@
                 - Name: ${visitorData.fullName}
                 - Purpose of Visit: ${visitorData.purpose}
                 - Person/Department Met: ${visitorData.personToMeet}
+                - Reference: ${visitorData.reference || 'N/A'}
+                - Meeting Notes from Assistant: ${visitorData.meetingNotes || 'No notes taken.'}
                 - Location: Malkapur, Maharashtra, India
 
                 Format the output in Markdown with headings for 'Visit Summary' and 'Suggested Follow-up'.
@@ -426,7 +446,7 @@
                     photoUrl = await getDownloadURL(storageRef);
                 }
                 await addDoc(collection(db, `artifacts/${appId}/users/${userId}/visitors`), {
-                    ...visitorData, photoUrl, checkInTime: serverTimestamp(), checkOutTime: null, status: 'Checked-In'
+                    ...visitorData, photoUrl, checkInTime: serverTimestamp(), checkOutTime: null, status: 'Checked-In', meetingNotes: ''
                 });
                 elements.visitorForm.reset();
                 elements.photoPreview.classList.add('hidden');
@@ -502,6 +522,7 @@
                         <p><strong>Address:</strong> <span class="text-gray-700">${data.village}, ${data.taluka}, ${data.district}</span></p>
                         <p><strong>Purpose:</strong> <span class="text-gray-700">${data.purpose}</span></p>
                         <p><strong>To Meet:</strong> <span class="text-gray-700">${data.personToMeet}</span></p>
+                        <p><strong>Reference:</strong> <span class="text-gray-700">${data.reference || 'None'}</span></p>
                         <hr>
                         <p><strong>Check-In:</strong> <span class="text-gray-700">${checkIn}</span></p>
                         <p><strong>Check-Out:</strong> <span class="text-gray-700">${checkOut}</span></p>
@@ -509,7 +530,14 @@
                     </div>
                 </div>
             `;
-            elements.aiSummarySection.innerHTML = `<button onclick="window.app.handleGenerateSummaryClick('${data.id}')" class="btn btn-ai w-full">✨ Generate Visit Summary & Follow-up</button>`;
+            
+            elements.meetingNotesSection.innerHTML = `
+                <h3 class="text-lg font-semibold mb-2 text-gray-800">Chairman's Meeting Notes & Follow-up</h3>
+                <textarea id="meetingNotesText" class="form-input w-full" rows="4" placeholder="Enter notes after the meeting...">${data.meetingNotes || ''}</textarea>
+                <button onclick="window.app.saveMeetingNotes(event, '${data.id}')" class="btn btn-primary mt-2 w-full">Save Notes</button>
+            `;
+
+            elements.aiSummarySection.innerHTML = `<button onclick="window.app.handleGenerateSummaryClick('${data.id}')" class="btn btn-ai w-full mt-4">✨ Generate Visit Summary & Follow-up</button>`;
             elements.detailsModal.style.display = 'block';
         }
 
@@ -528,9 +556,31 @@
                     console.error("Visitor not found:", id);
                 }
             },
+            saveMeetingNotes: async (event, id) => {
+                const notesText = document.getElementById('meetingNotesText').value;
+                const visitorDocRef = doc(db, `artifacts/${appId}/users/${userId}/visitors`, id);
+                const button = event.target;
+                try {
+                    await updateDoc(visitorDocRef, { meetingNotes: notesText });
+                    button.textContent = 'Notes Saved!';
+                    button.classList.add('bg-green-600', 'hover:bg-green-700');
+                    button.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+                    setTimeout(() => { 
+                        button.textContent = 'Save Notes';
+                        button.classList.remove('bg-green-600', 'hover:bg-green-700');
+                        button.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+                    }, 2000);
+                } catch (error) {
+                    console.error("Error saving notes:", error);
+                    button.textContent = 'Save Failed!';
+                    button.classList.add('bg-red-600', 'hover:bg-red-700');
+                }
+            },
             handleGenerateSummaryClick: (id) => {
                 const visitorData = currentVisitors.find(v => v.id === id);
                 if (visitorData) {
+                    // Make sure to include the latest notes from the textarea
+                    visitorData.meetingNotes = document.getElementById('meetingNotesText').value;
                     generateVisitSummary(visitorData);
                 } else {
                     console.error('Visitor not found for summary generation:', id);
@@ -539,114 +589,123 @@
             }
         };
 
-        // --- Event Listeners Setup ---
-        elements.visitorForm.addEventListener('submit', (e) => { e.preventDefault(); addVisitor(Object.fromEntries(new FormData(elements.visitorForm).entries())); });
-        elements.filterBtn.addEventListener('click', applyFilters);
-        elements.logFilter.addEventListener('keyup', applyFilters);
-        elements.generateInsightsBtn.addEventListener('click', generateDailyInsights);
-        elements.closeModal.onclick = () => elements.detailsModal.style.display = 'none';
-        elements.closeInsightsModal.onclick = () => elements.insightsModal.style.display = 'none';
-        window.onclick = (event) => {
-            if (event.target == elements.detailsModal) elements.detailsModal.style.display = 'none';
-            if (event.target == elements.insightsModal) elements.insightsModal.style.display = 'none';
-        };
-        
-        // Corrected Camera Logic with better feedback
-        elements.startCameraButton.addEventListener('click', async () => {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                elements.cameraStatus.textContent = "Camera not supported on this browser.";
-                elements.cameraStatus.classList.add('text-red-500');
-                return;
-            }
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-                elements.video.srcObject = stream;
-                elements.video.classList.remove('hidden');
-                elements.clickPhotoButton.classList.remove('hidden');
-                elements.startCameraButton.classList.add('hidden');
-                elements.cameraStatus.textContent = "Camera active. Please click photo.";
-                elements.cameraStatus.classList.remove('text-red-500');
-            } catch (err) {
-                console.error("Camera Error: ", err);
-                let message = "Could not access camera.";
-                if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
-                    message = "Camera access denied. Please enable camera permissions in your browser settings.";
-                } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
-                    message = "No camera found on this device.";
-                }
-                elements.cameraStatus.textContent = message;
-                elements.cameraStatus.classList.add('text-red-500');
-            }
-        });
-
-        elements.clickPhotoButton.addEventListener('click', () => {
-            elements.canvas.getContext('2d').drawImage(elements.video, 0, 0, elements.canvas.width, elements.canvas.height);
-            photoDataUrl = elements.canvas.toDataURL('image/jpeg');
-            elements.photoPreview.src = photoDataUrl;
-            elements.photoPreview.classList.remove('hidden');
-            
-            // Stop camera stream
-            if (elements.video.srcObject) {
-                elements.video.srcObject.getTracks().forEach(track => track.stop());
-            }
-            
-            elements.video.classList.add('hidden');
-            elements.clickPhotoButton.classList.add('hidden');
-            elements.startCameraButton.classList.remove('hidden');
-            elements.cameraStatus.textContent = "Photo captured successfully!";
-        });
-        
-        async function getFilteredDataForExport() {
-            let filtered = [...currentVisitors];
-            const filterText = elements.logFilter.value.toLowerCase();
-            const startDate = elements.startDate.value ? new Date(elements.startDate.value).setHours(0, 0, 0, 0) : null;
-            const endDate = elements.endDate.value ? new Date(elements.endDate.value).setHours(23, 59, 59, 999) : null;
-            if (filterText) filtered = filtered.filter(v => Object.values(v).some(val => String(val).toLowerCase().includes(filterText)));
-            if (startDate) filtered = filtered.filter(v => v.checkInTime && v.checkInTime.toDate() >= startDate);
-            if (endDate) filtered = filtered.filter(v => v.checkInTime && v.checkInTime.toDate() <= endDate);
-            return filtered;
-        }
-        elements.exportExcelBtn.addEventListener('click', async () => {
-            const visitors = await getFilteredDataForExport();
-            const dataToExport = visitors.map(v => ({
-                'Full Name': v.fullName, 'Mobile': v.mobileNumber, 'State': v.state, 'District': v.district, 'Village': v.village,
-                'Purpose': v.purpose, 'To Meet': v.personToMeet,
-                'Check-In': v.checkInTime ? v.checkInTime.toDate().toLocaleString() : 'N/A',
-                'Check-Out': v.checkOutTime ? v.checkOutTime.toDate().toLocaleString() : 'N/A',
-                'Status': v.status,
-            }));
-            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Visitors");
-            XLSX.writeFile(workbook, "VisitorLog.xlsx");
-        });
-        elements.exportPdfBtn.addEventListener('click', async () => {
-             const table = document.getElementById('visitorLogTable').cloneNode(true);
-             const opt = { margin: 0.5, filename: 'VisitorLog.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' } };
-             html2pdf().from(table).set(opt).save();
-        });
-        elements.exportWordBtn.addEventListener('click', async () => {
-            const visitors = await getFilteredDataForExport();
-            let htmlContent = `<h1>Visitor Log</h1><table border="1" style="width:100%; border-collapse: collapse;"><thead><tr><th>Name</th><th>Mobile</th><th>Address</th><th>Purpose</th><th>Check-In</th><th>Check-Out</th></tr></thead><tbody>`;
-            visitors.forEach(v => { htmlContent += `<tr><td>${v.fullName}</td><td>${v.mobileNumber}</td><td>${v.village}, ${v.district}</td><td>${v.purpose}</td><td>${v.checkInTime ? v.checkInTime.toDate().toLocaleString() : ''}</td><td>${v.checkOutTime ? v.checkOutTime.toDate().toLocaleString() : ''}</td></tr>`; });
-            htmlContent += `</tbody></table>`;
-            const blob = await htmlToDocx.asBlob(htmlContent);
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'VisitorLog.docx';
-            link.click();
-            URL.revokeObjectURL(link.href);
-        });
-
         // --- Initialization ---
-        onAuthStateChanged(auth, (user) => {
-            if (user) { userId = user.uid; listenForVisitors(); } 
-            else { signInAnonymously(auth).catch(console.error); }
-        });
-        initializeGeoDropdowns();
-        elements.stateSelect.value = "Maharashtra";
-        elements.stateSelect.dispatchEvent(new Event('change'));
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set up Firebase auth listener first
+            onAuthStateChanged(auth, (user) => {
+                if (user) { 
+                    userId = user.uid; 
+                    listenForVisitors(); 
+                } else { 
+                    signInAnonymously(auth).catch(console.error); 
+                }
+            });
 
+            // Initialize dropdowns and set default values
+            initializeGeoDropdowns();
+            if (elements.stateSelect) {
+                elements.stateSelect.value = "Maharashtra";
+                elements.stateSelect.dispatchEvent(new Event('change'));
+            }
+
+            // Attach all other event listeners
+            elements.visitorForm.addEventListener('submit', (e) => { e.preventDefault(); addVisitor(Object.fromEntries(new FormData(elements.visitorForm).entries())); });
+            elements.filterBtn.addEventListener('click', applyFilters);
+            elements.logFilter.addEventListener('keyup', applyFilters);
+            elements.generateInsightsBtn.addEventListener('click', generateDailyInsights);
+            elements.closeModal.onclick = () => elements.detailsModal.style.display = 'none';
+            elements.closeInsightsModal.onclick = () => elements.insightsModal.style.display = 'none';
+            window.onclick = (event) => {
+                if (event.target == elements.detailsModal) elements.detailsModal.style.display = 'none';
+                if (event.target == elements.insightsModal) elements.insightsModal.style.display = 'none';
+            };
+            
+            elements.startCameraButton.addEventListener('click', async () => {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    elements.cameraStatus.textContent = "Camera not supported on this browser.";
+                    elements.cameraStatus.classList.add('text-red-500');
+                    return;
+                }
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                    elements.video.srcObject = stream;
+                    elements.video.classList.remove('hidden');
+                    elements.clickPhotoButton.classList.remove('hidden');
+                    elements.startCameraButton.classList.add('hidden');
+                    elements.cameraStatus.textContent = "Camera active. Please click photo.";
+                    elements.cameraStatus.classList.remove('text-red-500');
+                } catch (err) {
+                    console.error("Camera Error: ", err);
+                    let message = "Could not access camera.";
+                    if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+                        message = "Camera access denied. Please enable camera permissions in your browser settings.";
+                    } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+                        message = "No camera found on this device.";
+                    }
+                    elements.cameraStatus.textContent = message;
+                    elements.cameraStatus.classList.add('text-red-500');
+                }
+            });
+
+            elements.clickPhotoButton.addEventListener('click', () => {
+                elements.canvas.getContext('2d').drawImage(elements.video, 0, 0, elements.canvas.width, elements.canvas.height);
+                photoDataUrl = elements.canvas.toDataURL('image/jpeg');
+                elements.photoPreview.src = photoDataUrl;
+                elements.photoPreview.classList.remove('hidden');
+                
+                if (elements.video.srcObject) {
+                    elements.video.srcObject.getTracks().forEach(track => track.stop());
+                }
+                
+                elements.video.classList.add('hidden');
+                elements.clickPhotoButton.classList.add('hidden');
+                elements.startCameraButton.classList.remove('hidden');
+                elements.cameraStatus.textContent = "Photo captured successfully!";
+            });
+            
+            async function getFilteredDataForExport() {
+                let filtered = [...currentVisitors];
+                const filterText = elements.logFilter.value.toLowerCase();
+                const startDate = elements.startDate.value ? new Date(elements.startDate.value).setHours(0, 0, 0, 0) : null;
+                const endDate = elements.endDate.value ? new Date(elements.endDate.value).setHours(23, 59, 59, 999) : null;
+                if (filterText) filtered = filtered.filter(v => Object.values(v).some(val => String(val).toLowerCase().includes(filterText)));
+                if (startDate) filtered = filtered.filter(v => v.checkInTime && v.checkInTime.toDate() >= startDate);
+                if (endDate) filtered = filtered.filter(v => v.checkInTime && v.checkInTime.toDate() <= endDate);
+                return filtered;
+            }
+            elements.exportExcelBtn.addEventListener('click', async () => {
+                const visitors = await getFilteredDataForExport();
+                const dataToExport = visitors.map(v => ({
+                    'Full Name': v.fullName, 'Mobile': v.mobileNumber, 'State': v.state, 'District': v.district, 'Village': v.village,
+                    'Purpose': v.purpose, 'To Meet': v.personToMeet, 'Reference': v.reference || '', 'Meeting Notes': v.meetingNotes || '',
+                    'Check-In': v.checkInTime ? v.checkInTime.toDate().toLocaleString() : 'N/A',
+                    'Check-Out': v.checkOutTime ? v.checkOutTime.toDate().toLocaleString() : 'N/A',
+                    'Status': v.status,
+                }));
+                const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Visitors");
+                XLSX.writeFile(workbook, "VisitorLog.xlsx");
+            });
+            elements.exportPdfBtn.addEventListener('click', async () => {
+                 const table = document.getElementById('visitorLogTable').cloneNode(true);
+                 const opt = { margin: 0.5, filename: 'VisitorLog.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' } };
+                 html2pdf().from(table).set(opt).save();
+            });
+            elements.exportWordBtn.addEventListener('click', async () => {
+                const visitors = await getFilteredDataForExport();
+                let htmlContent = `<h1>Visitor Log</h1><table border="1" style="width:100%; border-collapse: collapse;"><thead><tr><th>Name</th><th>Mobile</th><th>Address</th><th>Purpose</th><th>Reference</th><th>Meeting Notes</th><th>Check-In</th><th>Check-Out</th></tr></thead><tbody>`;
+                visitors.forEach(v => { htmlContent += `<tr><td>${v.fullName}</td><td>${v.mobileNumber}</td><td>${v.village}, ${v.district}</td><td>${v.purpose}</td><td>${v.reference || ''}</td><td>${v.meetingNotes || ''}</td><td>${v.checkInTime ? v.checkInTime.toDate().toLocaleString() : ''}</td><td>${v.checkOutTime ? v.checkOutTime.toDate().toLocaleString() : ''}</td></tr>`; });
+                htmlContent += `</tbody></table>`;
+                const blob = await htmlToDocx.asBlob(htmlContent);
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'VisitorLog.docx';
+                link.click();
+                URL.revokeObjectURL(link.href);
+            });
+        });
     </script>
 </body>
 </html>
+
